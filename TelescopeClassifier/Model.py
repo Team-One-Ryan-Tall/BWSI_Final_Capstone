@@ -2,6 +2,8 @@ import mygrad as mg
 # import torch
 from torch import tensor
 import torch.nn as nn
+
+from ImageLoader import load_image
 relu = nn.functional.relu
 import torch.nn as nn
 import torch.nn.functional as F
@@ -9,6 +11,10 @@ import torch
 # import torchvision
 import torchvision.transforms as transforms
 import numpy as np
+import matplotlib.pyplot as plt
+from ImageSlicer import slice_image_px
+from collections import Counter
+
 class Model(nn.Module):
     
     def __init__(self):
@@ -42,6 +48,30 @@ class Model(nn.Module):
         x = self.fc4(x)
         return x
     
+    def guess(self, image, guess_strings: "list[str]", truth = ""):
+        fig, ax = plt.subplots()
+        if(type(image) is str):
+            image = load_image(image)
+        slices = slice_image_px(500, image)
+        if(slices.shape[0] > 100):
+            step = slices.shape[0]//100
+            slices = slices[::step]
+        ten = tensor(slices).type(torch.cuda.FloatTensor)
+        ten = torch.transpose(torch.transpose(ten, 1, 3), 2, 3)
+        
+        mean_image = ten.mean(axis=0)
+        std_image = ten.std(axis=0)
+
+        ten -= mean_image
+        ten /= std_image
+        
+        prediction = np.array(self(ten).detach().cpu())
+        prediction = prediction.argmax(axis=1)
+        prediction = Counter(prediction).most_common()
+        ax.imshow(image)
+        ax.set_title("guess: " + guess_strings[prediction[0][0]] + "   truth: " + truth)
+        
+        print("Done")
 def accuracy(predictions, truth):
     """
     Returns the mean classification accuracy for a batch of predictions.
@@ -110,4 +140,7 @@ def train_model(model: Model, train_data, test_data, X, Y, optim, epochs=100, ba
                     plotter.set_test_batch({ "accuracy" : acc},
                                             batch_size=batch_size)
             plotter.set_train_epoch()
-            plotter.set_test_epoch()  
+            plotter.set_test_epoch()
+
+# model = Model()
+# model.guess("HubbleImages\heic0109a.tif", ["hubble", "webb"])

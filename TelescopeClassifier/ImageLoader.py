@@ -1,4 +1,4 @@
-import skimage.io as io
+# import skimage.io as io
 import imagecodecs
 import os
 from torch import tensor
@@ -7,10 +7,10 @@ import numpy as np
 # dtype = torch.cuda.FloatTensor 
 def load_image(filepath: str, device='cpu'):
     # shape-(Height, Width, Color)
-    if(filepath[-3:] != "tif"):
-        image = io.imread(str(filepath))
-    else:
-        image = imagecodecs.imread(str(filepath))
+    # if(filepath[-3:] != "tif"):
+    #     image = io.imread(str(filepath))
+    # else:
+    image = imagecodecs.imread(str(filepath))
     if image.shape[-1] == 4:
         # Image is RGBA, where A is alpha -> transparency
         # Must make image RGB.
