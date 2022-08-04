@@ -1,4 +1,5 @@
 # import skimage.io as io
+import random
 import imagecodecs
 import os
 from pyparsing import Word
@@ -75,7 +76,7 @@ def load_mmaps(filepath: str):
     except:
         return maps
     
-def get_word_data(caption_list: "list[str]"):
+def get_word_data(caption_list: "list[str]", k=np.inf):
     # all_words = "".join(chain.from_iterable(caption_list))
     # bag_of_words = ProcessText.create_bag_of_words(all_words, 10000)
     tokenized_captions = Counter(chain.from_iterable([set(ProcessText.tokenize(caption)) for caption in caption_list]))
@@ -84,13 +85,37 @@ def get_word_data(caption_list: "list[str]"):
     return idfs
 # print(load_image("TelescopeClassifier\HubbleImages\heic0108a.tif").shape)
 class WordCaptionThing:
-    def __init__(self) -> None:
-        self.data = load_path_metadata("TelescopeClassifier/HubbleImages")
+    def __init__(self, n=-1) -> None:
+        if(n > 0):
+            self.data =  load_path_metadata("HubbleImages")
+            for _ in range(len(self.data) - n):
+                self.data.pop(random.choice(list(self.data.keys())))
+        else:
+            self.data = load_path_metadata("HubbleImages")
         self.idfs = get_word_data(list(self.data.values()))
-        self.special_words = ["red", "orange", "yellow", "green", "blue", "white", "black", "light", "dark", "iridescent"]
-        for word in self.special_words: self.idfs[word] *= 2
-        print([word in self.idfs for word in self.special_words])
+        self.special_words = ["red", "crimson", "orange", "yellow", "green", "blue", "white", "black", "light", "dark", "iridescent", "bright", "brightly", "glowing", "pale", "colossal", "large", "faint", "faintly", "small", "tiny", "dense", "denser", "cloud", "clouds", "flame"]        
+        
+        # print([word in self.idfs for word in self.special_words])
+        for word in self.special_words: self.idfs[word] *= 5
 
-# data = load_path_metadata("TelescopeClassifier/WebbImages/NIRcam and MIRI Composite")
-WordCaptionThing()
-print("done")
+    def get_random_prompt(self, k: int):
+        prompt_path = random.choice(list(self.data.keys()))
+        tokenized_caption = ProcessText.tokenize(self.data[prompt_path])
+        weights = [self.idfs[word] if word in self.idfs else 0 for word in tokenized_caption]
+        
+        if(len(weights) > k):
+            windows = np.sum([weights[i:-1] for i in range(k)], axis=0)
+            ind = np.argmax(windows)
+            if (ind < k):
+                ind = k
+            prompt = tokenized_caption[(ind - k):(ind + 1)]
+            if(len(prompt) < 1):
+                print("uh oh")
+            out = " ".join(prompt)
+            
+            return prompt_path, out
+        return None
+        print("Done!")
+    
+    def __str__(self):
+        return "\n\n".join(list(self.data.values()))
